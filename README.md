@@ -17,11 +17,11 @@ NASA C-MAPSS, subconjunto FD001: [N] motores de treino, [N] de teste, 21 sensore
 
 ## Resultados (RMSE no teste, quanto menor, melhor)
 
-| Modelo | RMSE |
+| Modelo | RMSE (teste, FD001) |
 |---|---|
-| Regressão Linear (baseline) | [preencher] |
-| Random Forest (baseline) | [preencher] |
-| [Modelo final] | [preencher] |
+| Regressão Linear (baseline) | 20,82 |
+| Random Forest (baseline) | 17,16 |
+| [Modelo final] | [em andamento] |
 
 [Um parágrafo sobre o que funcionou, o que não funcionou e onde o modelo erra mais.]
 
