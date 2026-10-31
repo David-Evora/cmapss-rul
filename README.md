@@ -8,6 +8,15 @@ Prever quantos ciclos de operação ainda restam (RUL, *Remaining Useful Life*) 
 ## Dados
 NASA C-MAPSS, subconjunto FD001: [N] motores de treino, [N] de teste, 21 sensores e 3 condições operacionais.
 
+Dos 21 sensores, 6 são constantes (s1, s5, s10, s16, s18, s19) e foram descartados.
+Os sensores s2, s3, s4, s8, s11, s13, s15 e s17 sobem perto da falha, e s7, s12, s20 e s21 descem.
+
+![Sensores vs falha](reports/figures/02_sensores_vs_falha.png)
+
+Com esses dados podemos ver como fica a distribuição da vida útil dos motores.
+
+![Distribuição da vida útil](reports/figures/distribuicao_vida.png)
+
 ## Método
 1. Exploração e remoção de sensores constantes
 2. Baseline: Regressão Linear e Random Forest
