@@ -15,7 +15,7 @@ Os sensores s2, s3, s4, s8, s11, s13, s15 e s17 sobem perto da falha, e s7, s12,
 
 Com esses dados podemos ver como fica a distribuição da vida útil dos motores.
 
-![Distribuição da vida útil](reports/figures/distribuicao_vida.png)
+![Distribuição da vida útil](reports/figures/01_distribuicao_vida.png)
 
 ## Método
 1. Exploração e remoção de sensores constantes
