@@ -6,7 +6,7 @@
 Prever quantos ciclos de operação ainda restam (RUL, *Remaining Useful Life*) para cada motor turbofan a partir de leituras de sensores, para apoiar **manutenção preditiva**. Inspirado no meu projeto de monitoramento e manutenção preditiva do Grand Prix SENAI (2º lugar na América Latina).
 
 ## Dados
-NASA C-MAPSS, subconjunto FD001: [N] motores de treino, [N] de teste, 21 sensores e 3 condições operacionais.
+NASA C-MAPSS, subconjunto FD001: [100] motores de treino, [100] de teste, 21 sensores e 3 condições operacionais.
 
 Dos 21 sensores, 6 são constantes (s1, s5, s10, s16, s18, s19) e foram descartados.
 Os sensores s2, s3, s4, s8, s11, s13, s15 e s17 sobem perto da falha, e s7, s12, s20 e s21 descem.
@@ -18,21 +18,26 @@ Com esses dados podemos ver como fica a distribuição da vida útil dos motores
 ![Distribuição da vida útil](reports/figures/01_distribuicao_vida.png)
 
 ## Método
-1. Exploração e remoção de sensores constantes
-2. Baseline: Regressão Linear e Random Forest
-3. [Engenharia de variáveis: médias móveis, etc.]
+1. Exploração e remoção de sensores constantes (Feito)
+2. Baseline: Regressão Linear e Random Forest   (Feito)
+3. [Engenharia de variáveis: médias móveis, etc.] (em andamento)
 4. [XGBoost e rede em PyTorch]
 5. Validação separando por motor (sem vazamento entre treino e validação)
 
+## Resultados (RMSE no teste, quanto menor, melhor)
 ## Resultados (RMSE no teste, quanto menor, melhor)
 
 | Modelo | RMSE (teste, FD001) |
 |---|---|
 | Regressão Linear (baseline) | 20,82 |
 | Random Forest (baseline) | 17,16 |
-| [Modelo final] | [em andamento] |
+| XGBoost + médias móveis | em andamento |
 
-[Um parágrafo sobre o que funcionou, o que não funcionou e onde o modelo erra mais.]
+O Random Forest reduziu o erro em cerca de 18% em relação à Regressão Linear (de 20,82 para 17,16 ciclos),
+sem nenhum ajuste de hiperparâmetros. Isso sugere que a relação entre os sensores e o desgaste não é linear.
+Ambos os modelos usam só a leitura do último ciclo de cada motor no teste, e os sensores constantes
+(s1, s5, s10, s16, s18, s19) foram removidos. O próximo passo é incluir médias móveis dos sensores
+para capturar a tendência de desgaste, e validar separando os dados por motor.
 
 ## Como rodar
 
@@ -53,4 +58,6 @@ results/        métricas geradas
 ```
 
 ## Próximos passos
-- [ ] [ideia de melhoria]
+- [ ] [Adição de medias móveis]
+- [ ] [modelar com XGBoost]
+- [ ] [Validação por motor]
