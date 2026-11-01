@@ -24,20 +24,29 @@ Com esses dados podemos ver como fica a distribuição da vida útil dos motores
 4. [XGBoost e rede em PyTorch]
 5. Validação separando por motor (sem vazamento entre treino e validação)
 
-## Resultados (RMSE no teste, quanto menor, melhor)
-## Resultados (RMSE no teste, quanto menor, melhor)
+## Resultados
 
-| Modelo | RMSE (teste, FD001) |
-|---|---|
-| Regressão Linear (baseline) | 20,82 |
-| Random Forest (baseline) | 17,16 |
-| XGBoost + médias móveis | em andamento |
+RMSE em ciclos de vida útil restante (quanto menor, melhor). A escolha do modelo e dos hiperparâmetros
+usou **validação cruzada em 5 partes agrupada por motor** (nenhum motor aparece em treino e validação ao
+mesmo tempo). O conjunto de teste (último ciclo de cada um dos 100 motores do FD001) foi usado só no final.
+Os modelos finais foram repetidos com 5 sementes (média ± desvio).
 
-O Random Forest reduziu o erro em cerca de 18% em relação à Regressão Linear (de 20,82 para 17,16 ciclos),
-sem nenhum ajuste de hiperparâmetros. Isso sugere que a relação entre os sensores e o desgaste não é linear.
-Ambos os modelos usam só a leitura do último ciclo de cada motor no teste, e os sensores constantes
-(s1, s5, s10, s16, s18, s19) foram removidos. O próximo passo é incluir médias móveis dos sensores
-para capturar a tendência de desgaste, e validar separando os dados por motor.
+| Modelo | Variáveis | RMSE CV | RMSE teste |
+|---|---|---|---|
+| Regressão Linear (baseline) | sensores brutos | n/d | 20,82 |
+| Random Forest (baseline) | sensores brutos | n/d | 17,16 |
+| Random Forest (ajustado) | sensores + estatísticas móveis | 16,67 ± 0,02 | 16,58 ± 0,16 |
+| **XGBoost (ajustado)** | sensores + estatísticas móveis | **15,25 ± 0,03** | **15,96 ± 0,19** |
+
+**O que funcionou:** estatísticas móveis (média e desvio em janelas de 5, 15 e 30 ciclos) por motor reduziram
+o erro nos dois modelos. O XGBoost com `max_depth=4`, `learning_rate=0.03` e 800 árvores foi o melhor.
+
+**O que não funcionou:** o ajuste de hiperparâmetros trouxe ganho pequeno (CV de 15,49 para 15,31 no XGBoost,
+dentro do ruído entre as partes da validação). O Random Forest padrão do sklearn ficou entre os piores
+(CV 17,07), e mais regularização não melhorou o CV.
+
+**Limitações:** apenas o subconjunto FD001 (uma condição operacional); teste com 100 motores, então diferenças
+pequenas (~0,3) podem ser ruído; a análise de onde o modelo erra mais ainda está em andamento.
 
 ## Como rodar
 
