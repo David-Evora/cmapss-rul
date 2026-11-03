@@ -48,6 +48,54 @@ dentro do ruído entre as partes da validação). O Random Forest padrão do skl
 **Limitações:** apenas o subconjunto FD001 (uma condição operacional); teste com 100 motores, então diferenças
 pequenas (~0,3) podem ser ruído; a análise de onde o modelo erra mais ainda está em andamento.
 
+
+### Sensibilidade ao limite (cap) da RUL
+
+O alvo de treino foi limitado a 125 ciclos (padrão do C-MAPSS), pois enquanto o motor está saudável os sensores
+não carregam informação sobre quanto ainda resta. Como isso é uma escolha de modelagem, testei outros valores
+com o mesmo XGBoost (3 sementes, validação por motor), medindo sempre contra a RUL real **sem limite**.
+
+| Cap | CV (RUL ≤ 75) | CV (RUL ≤ 125) | Teste (real ≤ 125) | Teste (sem limite) |
+|---|---|---|---|---|
+| 75 | 8,48 | 20,94 | 27,47 | 29,61 |
+| 100 | 12,79 | 15,08 | 16,53 | 18,72 |
+| **125** | 16,03 | 16,55 | **15,98** | **17,25** |
+| 150 | 17,88 | 20,14 | 20,96 | 21,42 |
+| sem cap | 20,76 | 28,26 | 32,04 | 31,75 |
+
+- Treinar sem limitar o alvo piora muito o modelo, mesmo medindo contra a RUL real sem limite (31,75 vs 17,25).
+- Com cap 125, o RMSE no teste é 15,98 se a RUL real também for limitada a 125 (padrão da literatura) e **17,25 contra a RUL real
+  sem limite**: 11 dos 100 motores de teste têm RUL real acima de 125, que o modelo não prevê.
+- Caps menores (75, 100) melhoram o erro perto da falha em parte por limitarem o que o modelo pode prever, e o cap 75 piora no
+  teste por ficar cego acima de 75. Entre 100 e 125 não há vencedor claro; mantive 125 por ser o padrão.
+
+### Análise de erros
+
+O modelo final (XGBoost com estatísticas móveis) foi analisado com previsões fora da amostra da validação
+cruzada (por motor) e, só para descrever, no conjunto de teste. O notebook completo está em
+`notebooks/02_analise_erros.ipynb`.
+
+| RUL real (ciclos até a falha) | RMSE | Viés (previsto − real) | Linhas |
+|---|---|---|---|
+| 0-10 | 3,21 | +1,31 | 1.100 |
+| 11-30 | 6,88 | +2,26 | 2.000 |
+| 31-60 | 18,43 | +8,61 | 3.000 |
+| 61-100 | 20,84 | +9,80 | 4.000 |
+| 101-125 | 13,54 | −8,07 | 10.531 |
+
+![RMSE e viés por faixa de RUL](reports/figures/05_erro_por_faixa_rul.png)
+
+- **Onde erra mais:** na zona de transição (RUL real de 31 a 100), com RMSE de 18,43 a 20,84 ciclos, contra 3,21 a
+  6,88 perto da falha (RUL ≤ 30).
+- **Viés:** otimista (superestima a vida restante) até RUL 100, o que é o erro mais custoso em manutenção. O viés
+  negativo na faixa 101-125 é em boa parte estrutural, pois a verdade fica no teto do cap de 125.
+- **Regressão à média:** o viés por motor correlaciona-se com a vida do motor (r = −0,65, n = 100, só linhas com
+  RUL ≤ 100): motores de vida curta são superestimados e os de vida longa subestimados. O modelo não distingue, a
+  cada instante, um motor de degradação rápida de um de degradação lenta.
+- **Teste:** RMSE 15,96 ± 0,19 (RUL real limitada a 125, média de 5 sementes) e 17,25 contra a RUL real sem limite;
+  59% dos motores com erro positivo (n = 100).
+
+![Trajetórias previstas vs reais](reports/figures/06_trajetorias_motores.png)
 ## Como rodar
 
 ```bash
