@@ -1,0 +1,4 @@
+variaveis,n_variaveis,cv_125_media,cv_125_desvio,cv_31_100_media,cv_31_100_desvio,vies_31_100_media,vies_31_100_desvio,corr_vida_vies_media,corr_vida_vies_desvio,teste_125_media,teste_125_desvio,teste_sem_cap_media,teste_sem_cap_desvio,score_teste_media,score_teste_desvio
++ciclo,106,14.337,0.024,17.8,0.051,7.39,0.002,-0.6,0.004,15.062,0.095,16.346,0.109,377.739,11.275
++norm+ciclo,166,9.733,0.04,12.22,0.068,3.477,0.022,-0.655,0.003,11.146,0.157,12.327,0.181,182.84,9.809
++incl+ciclo,136,11.68,0.03,14.892,0.06,6.224,0.041,-0.69,0.005,11.652,0.159,12.963,0.15,203.749,5.759

@@ -1,0 +1,2 @@
+modelo,variaveis,config,rmse_cv_media,rmse_cv_desvio,rmse_teste_media,rmse_teste_desvio,params
+XGBoost,+norm+ciclo,ajuste do base (sorteio 18),9.703,0.028,11.149,0.1,"{'subsample': 0.7, 'reg_lambda': 1, 'n_estimators': 800, 'min_child_weight': 3, 'max_depth': 4, 'learning_rate': 0.03, 'colsample_bytree': 0.7}"

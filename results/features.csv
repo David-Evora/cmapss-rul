@@ -1,0 +1,5 @@
+modelo,variaveis,n_variaveis,rmse_cv,rmse_teste
+RandomForest,sensores brutos,15,18.57,17.06
+XGBoost,sensores brutos,15,18.75,17.34
+RandomForest,+ médias móveis,105,16.74,16.58
+XGBoost,+ médias móveis,105,15.49,16.15

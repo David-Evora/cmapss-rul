@@ -1,0 +1,3 @@
+modelo,rmse_teste
+LinearRegression,20.82
+RandomForest,17.16

@@ -1,4 +1,4 @@
-"""Dia 4b: ajuste de hiperparâmetros guiado por validação cruzada (sem atalhos de velocidade).
+"""Ajuste de hiperparâmetros guiado por validação cruzada (sem atalhos de velocidade).
 
 Regras que este script segue (para o resultado ser defensável):
   1. A ESCOLHA da configuração usa só o `rmse_cv` (validação cruzada agrupada por motor, no treino).
@@ -11,13 +11,19 @@ Regras que este script segue (para o resultado ser defensável):
      de velocidade que usamos antes custou ou não precisão.
   5. O melhor modelo é repetido com várias sementes e reportado como média ± desvio.
 
+`--variant` escolhe o conjunto de variáveis (veja `cmapss.features_v2.VARIANTS`). O padrão ("base")
+reproduz o ajuste anterior. Os arquivos de saída ganham um sufixo quando a variante não é a base,
+para não sobrescrever os resultados anteriores.
+
 Uso (na pasta cmapss-rul, com o .venv ativo):
-    python -m cmapss.tune --data-dir data                 # tudo (pode demorar bastante)
-    python -m cmapss.tune --data-dir data --models xgb    # só XGBoost (bem mais rápido)
+    python -m cmapss.tune --data-dir data --models xgb
+    python -m cmapss.tune --data-dir data --models xgb --variant "+norm+incl+ciclo" --xgb-iter 25
 """
 
 import argparse
+import re
 import time
+import unicodedata
 from pathlib import Path
 
 import numpy as np
@@ -28,7 +34,8 @@ from sklearn.model_selection import GroupKFold, ParameterSampler
 from xgboost import XGBRegressor
 
 from cmapss.data import last_cycle_rows, load_test, load_train
-from cmapss.features import DEFAULT_WINDOWS, add_rolling_features, feature_columns
+from cmapss.features import DEFAULT_WINDOWS
+from cmapss.features_v2 import N_BASELINE, SLOPE_WINDOWS, VARIANTS, build_features, feature_columns_v2
 from cmapss.train_baseline import usable_sensors
 
 SEARCH_SEED = 0  # semente do SORTEIO das configurações (não é a semente dos modelos)
@@ -63,11 +70,20 @@ XGB_FIXED = {
         "n_estimators": 400, "learning_rate": 0.05, "max_depth": 5, "min_child_weight": 1,
         "subsample": 0.8, "colsample_bytree": 0.8, "reg_lambda": 1,
     },
+    "ajuste do base (sorteio 18)": {
+        "subsample": 0.7, "reg_lambda": 1, "n_estimators": 800, "min_child_weight": 3,
+        "max_depth": 4, "learning_rate": 0.03, "colsample_bytree": 0.7,
+    },
 }
 
 
 def rmse(y_true, y_pred) -> float:
     return float(np.sqrt(mean_squared_error(y_true, y_pred)))
+
+
+def slug(name: str) -> str:
+    s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]+", "_", s).strip("_")
 
 
 def build(kind: str, params: dict, seed: int):
@@ -138,36 +154,47 @@ def run(
     xgb_iter: int = 30,
     seeds: int = 5,
     windows: tuple[int, ...] = DEFAULT_WINDOWS,
+    variant: str = "base",
 ) -> pd.DataFrame:
     train = load_train(data_dir)
     test, rul_true = load_test(data_dir)
     sensors = usable_sensors(train)
 
-    train_f = add_rolling_features(train, sensors, windows)
-    test_last = last_cycle_rows(add_rolling_features(test, sensors, windows))
-    cols = feature_columns(sensors, windows, with_rolling=True)
-    x, y, groups = train_f[cols], train_f["RUL"], train_f["unit"]
+    train_f = build_features(train, sensors, windows, SLOPE_WINDOWS, N_BASELINE)
+    test_last = last_cycle_rows(build_features(test, sensors, windows, SLOPE_WINDOWS, N_BASELINE))
+    cols = feature_columns_v2(sensors, windows, SLOPE_WINDOWS, **VARIANTS[variant])
+    y, groups = train_f["RUL"], train_f["unit"]
+    print(f"Variante '{variant}': {len(cols)} variáveis", flush=True)
+
+    # O Random Forest do sklearn não aceita NaN (as inclinações têm NaN no começo da vida do motor);
+    # para ele, NaN vira 0. O XGBoost trata NaN nativamente.
+    x_by = {"xgb": train_f[cols], "rf": train_f[cols].fillna(0.0)}
+    test_by = {"xgb": test_last[cols], "rf": test_last[cols].fillna(0.0)}
 
     plan = {
         "rf": (RF_SPACE, RF_FIXED, rf_iter, "Random Forest"),
         "xgb": (XGB_SPACE, XGB_FIXED, xgb_iter, "XGBoost"),
     }
+    tag = "" if variant == "base" else "_" + slug(variant)
     Path(out_dir).mkdir(exist_ok=True)
     final_rows = []
     for kind in models:
         space, fixed, n_iter, label = plan[kind]
-        table = search(kind, space, fixed, n_iter, x, y, groups)
-        table.drop(columns=["params"]).round(3).to_csv(Path(out_dir) / f"tuning_{kind}.csv", index=False)
+        table = search(kind, space, fixed, n_iter, x_by[kind], y, groups)
+        table.drop(columns=["params"]).round(3).to_csv(Path(out_dir) / f"tuning_{kind}{tag}.csv", index=False)
         print(f"\n=== {label}: configurações ordenadas pelo CV ===")
         print(table.drop(columns=["params"]).round(2).to_string(index=False))
 
         best = table.iloc[0]
         print(f"\nMelhor ({label}): {best['config']} -> {best['params']}\n")
-        rep = final_report(kind, best["params"], x, y, groups, test_last[cols], rul_true, seeds)
-        final_rows.append({"modelo": label, "config": best["config"], **rep, "params": str(best["params"])})
+        rep = final_report(kind, best["params"], x_by[kind], y, groups, test_by[kind], rul_true, seeds)
+        final_rows.append(
+            {"modelo": label, "variaveis": variant, "config": best["config"], **rep,
+             "params": str(best["params"])}
+        )
 
     final = pd.DataFrame(final_rows)
-    final.round(3).to_csv(Path(out_dir) / "tuning_final.csv", index=False)
+    final.round(3).to_csv(Path(out_dir) / f"tuning_final{tag}.csv", index=False)
     return final
 
 
@@ -178,6 +205,7 @@ if __name__ == "__main__":
     parser.add_argument("--rf-iter", type=int, default=8, help="nº de configurações sorteadas do RF")
     parser.add_argument("--xgb-iter", type=int, default=30, help="nº de configurações sorteadas do XGBoost")
     parser.add_argument("--seeds", type=int, default=5)
+    parser.add_argument("--variant", default="base", choices=list(VARIANTS), help="conjunto de variáveis")
     args = parser.parse_args()
 
     result = run(
@@ -186,10 +214,11 @@ if __name__ == "__main__":
         rf_iter=args.rf_iter,
         xgb_iter=args.xgb_iter,
         seeds=args.seeds,
+        variant=args.variant,
     )
     print("\n=== RESULTADO FINAL (melhor de cada modelo, média ± desvio entre sementes) ===")
     for _, r in result.iterrows():
         print(
-            f"{r['modelo']:14s} CV {r['rmse_cv_media']:.2f} ± {r['rmse_cv_desvio']:.2f} | "
+            f"{r['modelo']:14s} [{r['variaveis']}] CV {r['rmse_cv_media']:.2f} ± {r['rmse_cv_desvio']:.2f} | "
             f"teste {r['rmse_teste_media']:.2f} ± {r['rmse_teste_desvio']:.2f} | {r['config']}"
         )

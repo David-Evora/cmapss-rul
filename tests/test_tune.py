@@ -29,6 +29,17 @@ def test_evaluate_reports_train_and_cv(tmp_path):
     assert res["rmse_treino"] <= res["rmse_cv"] + 1e-9  # treino nunca é pior que validação aqui
 
 
+def test_variant_run_uses_new_features_and_suffix(tmp_path):
+    _fake_files(tmp_path, n_units=8)
+    out = tmp_path / "res"
+    final = run(str(tmp_path), out_dir=str(out), models=("xgb", "rf"), rf_iter=1, xgb_iter=1,
+                seeds=1, windows=(5,), variant="+norm+incl+ciclo")
+    assert set(final["variaveis"]) == {"+norm+incl+ciclo"}
+    assert (out / "tuning_xgb_norm_incl_ciclo.csv").exists()
+    assert (out / "tuning_final_norm_incl_ciclo.csv").exists()
+    assert not (out / "tuning_xgb.csv").exists()  # não sobrescreve o resultado da base
+
+
 def test_run_end_to_end_small(tmp_path):
     _fake_files(tmp_path, n_units=8)
     out = tmp_path / "res"
