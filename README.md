@@ -69,7 +69,7 @@ Pergunta: uma rede recorrente que enxerga os últimos 30 ciclos de cada motor ba
 
 Média e desvio-padrão entre as 5 sementes. A média de sementes do XGBoost final é 11,15 ± 0,10 (≤125).
 
-![RMSE por semente e previsto vs real](figures/04_rnn_fd001.png)
+![RMSE por semente e previsto vs real](reports/figures/04_rnn_fd001.png)
 
 **Conclusão.** Nenhuma das variantes se aproxima do XGBoost final. Dar o número do ciclo à rede melhorou o erro de validação (12,15 contra 12,85 para a GRU), mas não o de teste, e deixou o resultado instável (uma das sementes chegou a 15,93). Com apenas 100 motores de treino, as variáveis construídas à mão (normalização pelo nível inicial do motor, inclinações, ciclo) foram mais eficientes do que a rede aprender a representação sozinha. O erro de validação da rede é calculado sobre todas as janelas dos motores de validação, então não é diretamente comparável com o erro de teste (última janela de cada motor).
 
